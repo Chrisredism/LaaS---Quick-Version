@@ -12,25 +12,28 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/lie', async (req, res) => {
-  const url = 'curl https://lies-as-a-service.onrender.com/lie';
+  const url = 'https://lies-as-a-service.onrender.com/lie';
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(url, { signal: controller.signal });
 
     if (!response.ok) {
+      logger.warn({ status: response.status }, "Upstream API error");
       return res.status(502).json({
-        error: { message: 'Upstream API error', status: response.status },
+        error: { message: "Upstream API error", status: response.status },
       });
     }
 
     const data = await response.json();
     return res.json({ lie: data.lie, category: data.category });
-  } catch {
-    return res.status(502).json({ error: { message: 'Failed to fetch lie' } });
-  } finally {
+  } catch (err) {
+    logger.error({ message: err?.message, name: err?.name }, "Upstream fetch failed");
+    return res.status(502).json({ error: { message: "Failed to fetch lie" } });
+}
+ finally {
     clearTimeout(timeoutId);
   }
 });
